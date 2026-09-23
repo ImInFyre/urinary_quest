@@ -109,7 +109,7 @@ No necesita:
 2. Abre el archivo:
 
 ```text
-URINARY_QUEST_Sistema_Urinario.html
+prview(1).html
 ```
 
 3. Ábrelo con **Google Chrome**.
