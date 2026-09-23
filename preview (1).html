@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>URINARIUM // Misión Riñón</title>
+<style>
+:root{--bg:#050816;--panel:#0b1230;--cyan:#39e7ff;--pink:#ff3ea5;--green:#63ff9b;--yellow:#ffe66d;--red:#ff526d;--white:#edf7ff}
+*{box-sizing:border-box} body{margin:0;background:radial-gradient(circle at 50% 10%,#16285e 0,#070b1d 45%,#03050e 100%);color:var(--white);font-family:Arial,Helvetica,sans-serif;overflow:hidden}
+#game{width:100vw;height:100vh;position:relative;display:flex;align-items:center;justify-content:center}
+canvas{position:absolute;inset:0;width:100%;height:100%}
+.overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:5;background:rgba(2,4,14,.72);backdrop-filter:blur(5px)}
+.card{width:min(760px,92vw);padding:32px;border:1px solid #39e7ff66;border-radius:24px;background:linear-gradient(145deg,#0c1638ee,#070b20ee);box-shadow:0 0 60px #16d9ff22, inset 0 0 40px #39e7ff08;text-align:center}
+h1{font-size:clamp(38px,7vw,76px);margin:0 0 5px;letter-spacing:5px;color:var(--cyan);text-shadow:0 0 18px #39e7ff}
+h2{margin:5px 0 18px;color:#fff}.subtitle{color:#9fc8dc;line-height:1.6}
+button{border:0;border-radius:14px;padding:15px 28px;margin:8px;background:linear-gradient(90deg,#12bfe8,#8057ff);color:white;font-size:17px;font-weight:800;cursor:pointer;box-shadow:0 0 25px #3ce8ff33;transition:.15s}
+#playerName{width:min(340px,80%);padding:14px 16px;border-radius:12px;border:1px solid #39e7ff66;background:#050b20;color:white;font-size:18px;text-align:center;outline:none}
+#mobileControls{display:none;position:absolute;z-index:6;inset:auto 0 10px 0;pointer-events:none;justify-content:space-between;padding:0 15px}
+.mobilePad,.mobileActions{display:grid;gap:8px;pointer-events:auto}
+.mobilePad{grid-template-columns:repeat(3,52px);grid-template-rows:repeat(2,52px)}
+.mobileActions{grid-template-columns:repeat(3,58px)}
+.mob{border:1px solid #39e7ff66;background:#071532cc;color:#fff;border-radius:15px;font-size:22px;font-weight:bold;touch-action:none;user-select:none;-webkit-user-select:none}
+@media(max-width:800px),(pointer:coarse){#mobileControls{display:flex}.tip{font-size:12px}#questionBox{bottom:135px}.card{max-height:92vh;overflow:auto}}
+
+button:hover{transform:translateY(-2px);filter:brightness(1.15)}
+#hud{position:absolute;top:0;left:0;right:0;padding:15px 20px;z-index:3;display:none;pointer-events:none}
+.row{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.badge{background:#07112acc;border:1px solid #39e7ff55;border-radius:12px;padding:9px 13px;box-shadow:0 0 18px #39e7ff12}
+.bar{width:190px;height:12px;background:#171d35;border-radius:99px;overflow:hidden;border:1px solid #ffffff22}.fill{height:100%;width:100%;background:linear-gradient(90deg,#35ff99,#ffe66d);transition:.2s}
+#questionBox{display:none;position:absolute;z-index:4;bottom:20px;left:50%;transform:translateX(-50%);width:min(900px,94vw);background:#08122eeF;border:1px solid #39e7ff88;border-radius:20px;padding:18px;box-shadow:0 0 40px #000}
+#q{font-size:20px;font-weight:800;margin-bottom:12px} #answers{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.answer{margin:0;background:#101c3f;border:1px solid #ffffff1d;text-align:left}.answer:hover{border-color:var(--cyan)}
+#message{position:absolute;top:88px;left:50%;transform:translateX(-50%);z-index:4;font-weight:900;font-size:22px;text-shadow:0 0 15px #000;opacity:0;transition:.25s}
+.tip{font-size:13px;color:#86a7b8;margin-top:12px}
+@media(max-width:650px){#answers{grid-template-columns:1fr}.bar{width:120px}#hud{font-size:13px}.card{padding:22px}}
+</style>
+</head>
+<body>
+<div id="game">
+<canvas id="c"></canvas>
+
+<div id="hud">
+  <div class="row">
+    <div class="badge">🧑‍🚀 <b id="nameHud">AGENTE</b></div>
+    <div class="badge">🧬 NIVEL <b id="level">1</b></div>
+    <div class="badge">⚡ PUNTOS <b id="score">0</b></div>
+    <div class="badge">🌊 OLA <b id="waveHud">1</b></div>
+    <div class="badge">🔥 COMBO <b id="comboHud">0</b></div>
+    <div class="badge">💧 ORINA <b id="urine">0%</b></div>
+    <div class="badge">🧪 PRODUCCIÓN RENAL <b id="urineStatus">INICIAL</b></div>
+    <div class="badge">❤️ <b id="agentHp">500</b>/500 <span class="bar"><span id="hp" class="fill"></span></span></div>
+    <div class="badge">🫘 HABILIDAD RENAL <b id="kidneyPower">100%</b></div>
+    <div class="badge">🛡️ RIÑONES <b id="kidneyHP">100%</b></div>
+  </div>
+</div>
+
+<div id="mobileControls">
+ <div class="mobilePad">
+   <span></span><button class="mob" data-key="arrowup">▲</button><span></span>
+   <button class="mob" data-key="arrowleft">◀</button><button class="mob" data-key="arrowdown">▼</button><button class="mob" data-key="arrowright">▶</button>
+ </div>
+ <div class="mobileActions">
+   <button class="mob" id="fireBtn">⚡</button>
+   <button class="mob" id="kidneyBtn">🫘</button>
+   <button class="mob" id="scanBtn">🧠</button>
+ </div>
+</div>
+
+<div id="message"></div>
+
+<div id="start" class="overlay">
+ <div class="card">
+   <h1>URINARIUM</h1>
+   <h2>⚡ MISIÓN RIÑÓN ⚡</h2>
+   <p class="subtitle">¡Entra al cuerpo y recorre el sistema urinario! Filtra la sangre en el glomérulo, recupera sustancias útiles en el túbulo, conduce la orina por el uréter, almacénala en la vejiga y completa la misión por la uretra.</p>
+   <p class="subtitle"><b>Agente:</b></p>
+   <input id="playerName" maxlength="16" placeholder="Escribe tu nombre" autocomplete="off">
+   <p class="subtitle"><b>Controles:</b> mueve al personaje y dispara hacia la dirección en la que te estés moviendo. Las <b>toxinas atacan principalmente a los riñones</b>; tú debes protegerlos. Llegan en <b>olas</b>, tienen mucha vida y debes mantener la <b>producción de orina</b>. En celular usa los controles táctiles.</p>
+   <button onclick="startGame()">INICIAR MISIÓN</button>
+   <div class="tip">Objetivo: <b>mantener vivos LOS DOS RIÑONES</b>, completar el recorrido de la orina y mantener funcionando la nefrona. Solo pierdes cuando ambos llegan a 0. Cada zona representa una parte real del sistema urinario.</div>
+ </div>
+</div>
+
+<div id="questionBox">
+ <div id="q"></div>
+ <div id="answers"></div>
+</div>
+</div>
+
+<script>
+const canvas=document.getElementById('c'),ctx=canvas.getContext('2d');
+let W,H,keys={},running=false,last=0,score=0,hp=100,urine=0,level=1;
+let player,bullets=[],enemies=[],particles=[],orbs=[],spawn=0,zone=0,questionOpen=false;
+let playerName='AGENTE', lastDir={x:0,y:-1};
+let kidneyPower=100, kidneyFlash=0, kidneyCooldown=0, combo=0, comboTimer=0;
+let wave=1, waveEnemiesLeft=6, waveActive=false, waveDelay=0, waveCleared=false;
+let kidneys=[
+ {x:0,y:0,hp:100,maxHp:100},
+ {x:0,y:0,hp:100,maxHp:100}
+];
+let kidneyDamageFlash=0;
+const questions=[
+ {q:"¿Qué órgano produce la orina?",a:["Riñón","Vejiga","Uréter","Uretra"],ok:0},
+ {q:"¿Cuál es la unidad funcional del riñón?",a:["Nefrona","Alvéolo","Neurona","Osteona"],ok:0},
+ {q:"¿Qué estructura del corpúsculo renal recibe el filtrado?",a:["Cápsula de Bowman","Vejiga","Uréter","Uretra"],ok:0},
+ {q:"¿Dónde ocurre la filtración inicial de la sangre?",a:["Glomérulo","Vejiga","Uretra","Uréter"],ok:0},
+ {q:"¿Qué proceso recupera agua y sustancias útiles del filtrado?",a:["Reabsorción tubular","Digestión","Ventilación","Coagulación"],ok:0},
+ {q:"¿Qué conductos llevan la orina desde cada riñón hasta la vejiga?",a:["Uréteres","Bronquios","Arterias","Nervios"],ok:0},
+ {q:"¿Qué órgano almacena temporalmente la orina?",a:["Vejiga urinaria","Riñón","Glomérulo","Uréter"],ok:0},
+ {q:"¿Por qué estructura sale la orina al exterior?",a:["Uretra","Uréter","Arteria renal","Cápsula de Bowman"],ok:0},
+ {q:"¿Cuál de estos desechos se elimina normalmente por la orina?",a:["Urea","Oxígeno","Glucógeno","Hemoglobina"],ok:0},
+ {q:"¿Qué vasos llevan sangre hacia los riñones?",a:["Arterias renales","Uréteres","Uretras","Bronquios"],ok:0},
+ {q:"¿Qué sucede con muchas sustancias útiles durante la formación de orina?",a:["Se reabsorben","Se convierten en hueso","Se almacenan en el pulmón","Se expulsan todas"],ok:0},
+ {q:"¿Cuál es el recorrido correcto de la orina?",a:["Riñón → uréter → vejiga → uretra","Vejiga → riñón → uretra → uréter","Riñón → uretra → vejiga → uréter","Uréter → riñón → vejiga → uretra"],ok:0}
+];
+function resize(){W=canvas.width=innerWidth*devicePixelRatio;H=canvas.height=innerHeight*devicePixelRatio;canvas.style.width=innerWidth+'px';canvas.style.height=innerHeight+'px';ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);W=innerWidth;H=innerHeight}
+addEventListener('resize',resize);resize();
+addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;if([' ','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key))e.preventDefault();if(e.key==='Enter'&&!questionOpen&&running)openQuestion()});
+addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+
+function startGame(){
+ document.getElementById('start').style.display='none';document.getElementById('hud').style.display='block';
+ running=true;score=0;hp=500;urine=0;level=1;zone=0;kidneyPower=100;kidneyFlash=0;kidneyCooldown=0;combo=0;comboTimer=0;
+wave=1;waveEnemiesLeft=6;waveActive=false;waveDelay=0;waveCleared=false;
+kidneys=[
+ {x:W*.27,y:H*.47,hp:1200,maxHp:1200},
+ {x:W*.73,y:H*.47,hp:1200,maxHp:1200}
+];
+kidneyDamageFlash=0;
+ playerName=(document.getElementById('playerName').value.trim()||'AGENTE').slice(0,16);
+ document.getElementById('nameHud').textContent=playerName.toUpperCase();
+ player={x:W/2,y:H/2,r:17,spd:5,cool:0};
+ bullets=[];enemies=[];particles=[];orbs=[];spawn=0;last=performance.now();requestAnimationFrame(loop);
+}
+function shoot(){
+ if(player.cool>0)return;
+ player.cool=130;
+ // El disparo viaja hacia el último movimiento realizado.
+ let vx=lastDir.x,vy=lastDir.y;
+ if(vx===0&&vy===0){vx=0;vy=-1}
+ bullets.push({x:player.x+vx*18,y:player.y+vy*18,vx:vx*9,vy:vy*9,r:5});
+ burst(player.x+vx*18,player.y+vy*18,'#39e7ff',4)
+}
+function kidneyAbility(){
+ if(kidneyPower<100||kidneyCooldown>0||!running)return;
+ kidneyPower=0;kidneyCooldown=180;kidneyFlash=34;
+ // SUPER FILTRACIÓN: los riñones eliminan desechos y ayudan a conservar el equilibrio interno.
+ const cleared=enemies.length;
+ score+=200+cleared*30; urine=Math.min(100,urine+12+cleared*2);
+ enemies.forEach(e=>burst(e.x,e.y,'#63ff9b',20));
+ enemies=[];
+ hp=Math.min(500,hp+100);
+ kidneys.forEach(k=>k.hp=Math.min(k.maxHp,k.hp+20));
+ for(let i=0;i<70;i++)burst(player.x,player.y,'#39e7ff',2.5);
+ kidneys.forEach(k=>burst(k.x,k.y,'#63ff9b',18));
+ showMessage('🫘 ¡SUPER FILTRACIÓN! '+cleared+' TOXINAS ELIMINADAS · RIÑONES +20 · +ENERGÍA');
+}
+function burst(x,y,col,n=10){for(let i=0;i<n;i++){let a=Math.random()*Math.PI*2,s=Math.random()*4+1;particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:35+Math.random()*25,col})}}
+function spawnEnemy(){
+ let side=Math.floor(Math.random()*4),x=side<2?(Math.random()*W):(side===2?-30:W+30),y=side<2?(side===0?-30:H+30):Math.random()*H;
+ let target=Math.random()<.5?0:1;
+enemies.push({x,y,r:16+Math.random()*8,hp:18+level*4, maxHp:18+level*4, spd:.62+level*.07,ang:0,target:target,attackCooldown:0});
+}
+function startWave(){
+ waveActive=true;waveCleared=false;
+ waveEnemiesLeft=Math.min(4+wave*2+level,12);
+ showMessage('🌊 OLA '+wave+' // '+waveEnemiesLeft+' TOXINAS');
+}
+function spawnOrb(){
+ // Gota de orina: recurso que el jugador recoge para reparar los riñones.
+ orbs.push({x:40+Math.random()*(W-80),y:90+Math.random()*(H-220),r:11,p:Math.random()*6.28});
+}
+function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}
+function update(dt){
+ let dx=(keys['d']||keys['arrowright']?1:0)-(keys['a']||keys['arrowleft']?1:0);
+ let dy=(keys['s']||keys['arrowdown']?1:0)-(keys['w']||keys['arrowup']?1:0);
+ let len=Math.hypot(dx,dy)||1;
+if(dx!==0||dy!==0){lastDir={x:dx/len,y:dy/len}}
+player.x=Math.max(25,Math.min(W-25,player.x+dx/len*player.spd*dt));
+player.y=Math.max(75,Math.min(H-40,player.y+dy/len*player.spd*dt));
+ if(keys[' '])shoot();player.cool=Math.max(0,player.cool-16*dt);
+ kidneyCooldown=Math.max(0,kidneyCooldown-16*dt);
+comboTimer=Math.max(0,comboTimer-16*dt);if(comboTimer===0)combo=0;
+if(kidneyCooldown===0) kidneyPower=Math.min(100,kidneyPower+0.8*dt);
+kidneyFlash=Math.max(0,kidneyFlash-dt);
+if(!waveActive && enemies.length===0){
+ waveDelay-=dt;
+ if(waveDelay<=0)startWave();
+}
+if(waveActive){
+ spawn-=dt;
+ if(waveEnemiesLeft>0 && spawn<=0){
+   spawnEnemy();waveEnemiesLeft--;spawn=85;
+   if(Math.random()<.35)spawnOrb();
+ }
+ if(waveEnemiesLeft===0 && enemies.length===0){
+   waveActive=false;wave++;
+   score+=100;urine=Math.min(100,urine+5);waveDelay=120;
+   showMessage('🏆 OLA SUPERADA +100 // +5% FORMACIÓN DE ORINA');
+ }
+}
+ bullets.forEach(b=>{b.x+=b.vx*dt;b.y+=b.vy*dt});
+ bullets=bullets.filter(b=>b.y>-30&&b.y<H+30&&b.x>-30&&b.x<W+30);
+ enemies.forEach(e=>{
+   e.attackCooldown=Math.max(0,e.attackCooldown-16*dt);
+   // La prioridad de las toxinas es dañar los riñones; solo ocasionalmente persiguen al jugador.
+   let k=kidneys[e.target];
+   let targetX=k.x,targetY=k.y;
+   if(Math.random()<0.015){targetX=player.x;targetY=player.y}
+   let a=Math.atan2(targetY-e.y,targetX-e.x);
+   e.x+=Math.cos(a)*e.spd*dt;e.y+=Math.sin(a)*e.spd*dt;e.ang=a;
+   if(Math.hypot(e.x-k.x,e.y-k.y)<48 && e.attackCooldown<=0){
+      k.hp=Math.max(0,k.hp-2);
+      e.attackCooldown=70;
+      kidneyDamageFlash=12;
+      burst(k.x,k.y,'#ff526d',8);
+   }
+   if(Math.hypot(e.x-player.x,e.y-player.y)<e.r+player.r && e.attackCooldown<=0 && Math.random()<.08){
+      hp=Math.max(0,hp-2);e.attackCooldown=120;
+   }
+ });
+ for(let i=enemies.length-1;i>=0;i--){let e=enemies[i];
+   for(let j=bullets.length-1;j>=0;j--){let b=bullets[j];if(dist(e,b)<e.r+b.r){e.hp--;bullets.splice(j,1);burst(e.x,e.y,'#ff3ea5',5);if(e.hp<=0){combo++;comboTimer=150;score+=50+combo*10;urine=Math.min(100,urine+2);burst(e.x,e.y,'#63ff9b',20);showMessage(combo>=3?'🔥 ¡COMBO TOXINA x'+combo+'!':'💥 ¡TOXINA ELIMINADA!');enemies.splice(i,1)}break}}
+   if(enemies[i]&&dist(enemies[i],player)<e.r+player.r){hp-=.8*dt;burst(player.x,player.y,'#ff526d',1);if(hp<=0){gameOver();return}}
+ }
+ for(let i=orbs.length-1;i>=0;i--){let o=orbs[i];o.p+=.05*dt;if(dist(o,player)<o.r+player.r){
+   score+=20;urine=Math.min(100,urine+5);
+   kidneys.forEach(k=>k.hp=Math.min(k.maxHp,k.hp+5)); hp=Math.min(500,hp+25);
+   burst(o.x,o.y,'#63ff9b',16);orbs.splice(i,1);
+   showMessage('💧 ¡GOTA DE ORINA! +5% ORINA · RIÑONES +5');
+ }}
+ particles.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=.96;p.vy*=.96;p.life-=dt});particles=particles.filter(p=>p.life>0);
+ if(urine>=25&&level===1){level=2;zone=1;wave=1;waveActive=false;waveDelay=45;waveEnemiesLeft=6;showMessage('🧪 ZONA 2: TÚBULO RENAL');setTimeout(()=>{if(running&&!questionOpen)openQuestion()},700)}
+ if(urine>=55&&level===2){level=3;zone=2;wave=1;waveActive=false;waveDelay=45;waveEnemiesLeft=6;showMessage('💧 ZONA 3: URÉTER Y VEJIGA');setTimeout(()=>{if(running&&!questionOpen)openQuestion()},700)}
+ if(urine>=85&&level===3){level=4;zone=3;wave=1;waveActive=false;waveDelay=45;waveEnemiesLeft=6;showMessage('🚀 ZONA FINAL: URETRA');setTimeout(()=>{if(running&&!questionOpen)openQuestion()},700)}
+ if(kidneys.every(k=>k.hp<=0)){kidneyFail();return}
+ if(urine>=100&&level===4)win();
+ document.getElementById('score').textContent=score;document.getElementById('urine').textContent=Math.floor(urine)+'%';
+ document.getElementById('urineStatus').textContent=urine<25?'FILTRACIÓN':urine<55?'REABSORCIÓN':urine<85?'TRANSPORTE':'EXPULSIÓN';document.getElementById('level').textContent=level;document.getElementById('waveHud').textContent=wave;document.getElementById('comboHud').textContent=combo;document.getElementById('hp').style.width=Math.max(0,(hp/500)*100)+'%';
+ document.getElementById('kidneyPower').textContent=Math.floor(kidneyPower)+'%'; document.getElementById('agentHp').textContent=Math.ceil(hp);
+ const renalHP=Math.floor(((kidneys[0].hp+kidneys[1].hp)/(kidneys[0].maxHp+kidneys[1].maxHp))*100);
+ document.getElementById('kidneyHP').textContent=renalHP+'%';
+}
+function draw(){
+ ctx.clearRect(0,0,W,H);
+ let grad=ctx.createRadialGradient(W/2,H/2,20,W/2,H/2,Math.max(W,H)*.7);grad.addColorStop(0,zone===0?'#101c4a':zone===1?'#123c35':zone===2?'#351344':'#10384a');grad.addColorStop(1,'#030510');ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);
+ // HABILIDAD ESPECIAL: ONDA DE FILTRACIÓN RENAL
+ if(kidneyFlash>0){
+   ctx.save();ctx.globalAlpha=kidneyFlash/28;
+   ctx.strokeStyle='#63ff9b';ctx.lineWidth=5;
+   ctx.shadowBlur=35;ctx.shadowColor='#63ff9b';
+   ctx.beginPath();ctx.arc(player.x,player.y,(28-kidneyFlash)*18,0,7);ctx.stroke();
+   ctx.restore();
+ }
+ // RIÑONES: bases que debes proteger
+ kidneys.forEach((k,i)=>{
+   ctx.save();
+   let damaged=k.hp<35;
+   ctx.shadowBlur=damaged?28:18;ctx.shadowColor=damaged?'#ff526d':'#63ff9b';
+   ctx.fillStyle=damaged?'#7a233d':'#8c3151';
+   ctx.beginPath();
+   ctx.ellipse(k.x,k.y,42,62, i===0?-0.18:0.18,0,7);ctx.fill();
+   ctx.fillStyle='#42162a';ctx.beginPath();ctx.ellipse(k.x+(i===0?10:-10),k.y,18,30,i===0?-.18:.18,0,7);ctx.fill();
+   ctx.shadowBlur=0;
+   ctx.fillStyle='#fff';ctx.font='bold 11px Arial';ctx.textAlign='center';
+   ctx.fillText(i===0?'RIÑÓN IZQ.':'RIÑÓN DER.',k.x,k.y+82);
+   // health bar
+   ctx.fillStyle='#180d18';ctx.fillRect(k.x-45,k.y-82,90,8);
+   ctx.fillStyle=damaged?'#ff526d':'#63ff9b';ctx.fillRect(k.x-45,k.y-82,90*(k.hp/k.maxHp),8);
+   ctx.restore();
+ });
+ if(kidneyDamageFlash>0){
+   ctx.fillStyle='rgba(255,50,90,.12)';ctx.fillRect(0,0,W,H);
+   kidneyDamageFlash-=1;
+ }
+
+// MAPA ANATÓMICO DEL SISTEMA URINARIO
+ ctx.save();
+ ctx.globalAlpha=.18;
+ ctx.strokeStyle='#39e7ff'; ctx.lineWidth=7; ctx.lineCap='round';
+ if(zone===0){
+   ctx.beginPath(); ctx.ellipse(W*.32,H*.42,85,145,0,0,7); ctx.stroke();
+   ctx.beginPath(); ctx.ellipse(W*.68,H*.42,85,145,0,0,7); ctx.stroke();
+   ctx.fillStyle='#39e7ff';ctx.font='bold 13px Arial';ctx.fillText('RIÑÓN IZQ.',W*.32-38,H*.42+170);ctx.fillText('RIÑÓN DER.',W*.68-38,H*.42+170);
+ } else if(zone===1){
+   ctx.beginPath();ctx.moveTo(W*.32,H*.20);ctx.bezierCurveTo(W*.2,H*.45,W*.75,H*.35,W*.58,H*.72);ctx.stroke();
+   ctx.fillStyle='#63ff9b';ctx.font='bold 14px Arial';ctx.fillText('TÚBULO RENAL',W*.43,H*.16);
+ } else if(zone===2){
+   ctx.beginPath();ctx.moveTo(W*.38,H*.20);ctx.bezierCurveTo(W*.45,H*.35,W*.36,H*.55,W*.43,H*.66);ctx.stroke();
+   ctx.beginPath();ctx.ellipse(W*.5,H*.75,75,45,0,0,7);ctx.stroke();
+   ctx.fillStyle='#ff8be0';ctx.font='bold 14px Arial';ctx.fillText('URÉTER',W*.39,H*.45);ctx.fillText('VEJIGA',W*.47,H*.85);
+ } else {
+   ctx.beginPath();ctx.ellipse(W*.5,H*.55,75,48,0,0,7);ctx.stroke();
+   ctx.beginPath();ctx.moveTo(W*.5,H*.59);ctx.lineTo(W*.5,H*.88);ctx.stroke();
+   ctx.fillStyle='#39e7ff';ctx.font='bold 14px Arial';ctx.fillText('VEJIGA',W*.47,H*.53);ctx.fillText('URETRA',W*.52,H*.79);
+ }
+ ctx.restore();
+
+ // bio-tech grid
+ ctx.strokeStyle='#49ddff12';ctx.lineWidth=1;for(let x=0;x<W;x+=45){ctx.beginPath();ctx.moveTo(x,70);ctx.lineTo(x,H);ctx.stroke()}for(let y=75;y<H;y+=45){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+ // zone label
+ ctx.fillStyle='#bcefff';ctx.font='bold 14px Arial';
+ const zoneText=[
+ 'CORTEZA RENAL // GLOMÉRULO: FILTRACIÓN DE LA SANGRE',
+ 'TÚBULO RENAL // REABSORCIÓN: RECUPERA AGUA Y SUSTANCIAS ÚTILES',
+ 'URÉTER + VEJIGA // LA ORINA VIAJA Y SE ALMACENA',
+ 'URETRA // LA ORINA SALE AL EXTERIOR'
+ ][zone];
+ ctx.fillText(zoneText,25,H-20);
+ ctx.textAlign='right';ctx.fillStyle='#d8f8ff';ctx.font='bold 13px Arial';
+ ctx.fillText(waveActive?'OLA '+wave+' // TOXINAS RESTANTES: '+waveEnemiesLeft:'PREPARANDO OLA '+wave,W-25,H-20);
+ // orbs
+ orbs.forEach(o=>{let s=12+Math.sin(o.p)*3;ctx.beginPath();ctx.arc(o.x,o.y,s,0,7);ctx.fillStyle='#b9f7ff';ctx.shadowBlur=18;ctx.shadowColor='#39e7ff';ctx.fill();ctx.shadowBlur=0;
+  ctx.fillStyle='#fff';ctx.font='bold 7px Arial';ctx.textAlign='center';ctx.fillText('ORINA',o.x,o.y+2)});
+ // 👾 TOXINAS / DESECHOS: enemigos sencillos, lentos y de un solo disparo
+ enemies.forEach(e=>{
+   ctx.save();ctx.translate(e.x,e.y);
+   ctx.fillStyle='#ff3b72';ctx.shadowBlur=20;ctx.shadowColor='#ff3b72';
+   ctx.beginPath();ctx.arc(0,0,e.r,0,7);ctx.fill();
+   ctx.shadowBlur=0;
+   ctx.strokeStyle='#ffd1df';ctx.lineWidth=2;
+   for(let k=0;k<3;k++){let a=e.ang+k*2.09;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(Math.cos(a)*e.r*1.35,Math.sin(a)*e.r*1.35);ctx.stroke();
+     ctx.beginPath();ctx.arc(Math.cos(a)*e.r*1.35,Math.sin(a)*e.r*1.35,4,0,7);ctx.fillStyle='#ffe66d';ctx.fill();}
+   ctx.fillStyle='#fff';ctx.font='bold 8px Arial';ctx.textAlign='center';ctx.fillText('TOX',0,3);
+   // Barra de vida muy alta de la toxina
+   ctx.fillStyle='#160914';ctx.fillRect(-24,e.r+9,48,5);
+   ctx.fillStyle='#ff526d';ctx.fillRect(-24,e.r+9,48*Math.max(0,e.hp/e.maxHp),5);
+   ctx.fillStyle='#ffd7e0';ctx.font='bold 7px Arial';ctx.fillText('TOXINA',0,e.r+22);
+   ctx.restore();
+ });
+ // player
+ ctx.save();ctx.translate(player.x,player.y);ctx.shadowBlur=25;ctx.shadowColor='#39e7ff';ctx.fillStyle='#39e7ff';ctx.beginPath();ctx.arc(0,0,18,0,7);ctx.fill();ctx.fillStyle='#071126';ctx.beginPath();ctx.arc(0,0,9,0,7);ctx.fill();ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(-3,-3,3,0,7);ctx.fill();ctx.restore();
+ bullets.forEach(b=>{ctx.fillStyle='#63ff9b';ctx.shadowBlur=15;ctx.shadowColor='#63ff9b';ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,7);ctx.fill();ctx.shadowBlur=0});
+ particles.forEach(p=>{ctx.globalAlpha=Math.max(0,p.life/50);ctx.fillStyle=p.col;ctx.fillRect(p.x,p.y,3,3);ctx.globalAlpha=1});
+}
+function loop(t){if(!running)return;let dt=Math.min(2,(t-last)/16.67);last=t;update(dt);draw();requestAnimationFrame(loop)}
+function showMessage(s){let m=document.getElementById('message');m.textContent=s;m.style.opacity=1;setTimeout(()=>m.style.opacity=0,1800)}
+function openQuestion(){if(questionOpen)return;questionOpen=true;let item=questions[Math.floor(Math.random()*questions.length)];document.getElementById('q').textContent='🧠 ESCÁNER: '+item.q;let box=document.getElementById('answers');box.innerHTML='';
+ item.a.forEach((x,i)=>{let b=document.createElement('button');b.className='answer';b.textContent=String.fromCharCode(65+i)+'. '+x;b.onclick=()=>answer(i===item.ok);box.appendChild(b)});document.getElementById('questionBox').style.display='block'}
+function answer(ok){if(ok){score+=100;urine=Math.min(100,urine+5);showMessage('✅ CORRECTO +100 // LOS RIÑONES FILTRAN LA SANGRE')}else{hp=Math.max(1,hp-18);showMessage('❌ INCORRECTO // -18 ENERGÍA')}questionOpen=false;document.getElementById('questionBox').style.display='none'}
+function kidneyFail(){
+ running=false;
+ document.getElementById('hud').style.display='none';
+ document.getElementById('start').style.display='flex';
+ document.querySelector('#start h1').textContent='🚨 MISIÓN FALLIDA';
+ document.querySelector('#start h2').textContent='¡LOS DOS RIÑONES FUERON DESTRUIDOS!';
+ document.querySelector('#start .subtitle').textContent=playerName+' no pudo proteger ambos riñones. Los riñones son esenciales para filtrar la sangre y formar la orina. Puntaje: '+score;
+ document.querySelector('#start button').textContent='REINTENTAR';
+}
+function gameOver(){running=false;document.getElementById('hud').style.display='none';document.getElementById('start').style.display='flex';document.querySelector('#start h1').textContent='MISIÓN FALLIDA';document.querySelector('#start h2').textContent='¡EL AGENTE FUE DERROTADO!';document.querySelector('#start .subtitle').textContent=playerName+' · Puntaje: '+score+' · Filtración: '+Math.floor(urine)+'%';document.querySelector('#start button').textContent='REINTENTAR'}
+function win(){running=false;document.getElementById('hud').style.display='none';document.getElementById('start').style.display='flex';document.querySelector('#start h1').textContent='¡RIÑÓN SALVADO!';document.querySelector('#start h2').textContent='🏆 MISIÓN COMPLETADA 🏆';document.querySelector('#start .subtitle').textContent=playerName+' completó la ruta: nefrona → filtración → reabsorción → uréter → vejiga → uretra. Puntaje: '+score;document.querySelector('#start button').textContent='JUGAR DE NUEVO'}
+</script>
+</body>
+</html>
